@@ -1,45 +1,85 @@
 import { useState } from 'react';
-import { Web3 } from 'web3';
+import { ethers, BrowserProvider, JsonRpcProvider, Contract } from 'ethers';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-
-import './App.css'
+import { DiscoverWalletProviders } from './components/DiscoverWalletProviders'
 
 function App() {
   const [isConnected, setIc] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [web3, setWeb3] = useState(false);
+  const [provider, setProvider] = useState<BrowserProvider | JsonRpcProvider | null>(null);
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState('');
   const [isFauceted, setIf] = useState(false);
+
+  console.log("ethers.js Version:",ethers.version);
+
+  const TEST_NET_CONFIG = {
+    chainId: '0x15511',
+    chainName: 'maxbu-mainnet',
+    rpcUrl: "https://virtual.mainnet.rpc.tenderly.co/45413366-6994-4e16-aee3-52d53ad0f62f",
+    blockExplorerUrl: "https://mumbai.polygonscan.com/",
+  };
   
   async function connectWallet(){
     setConnecting(true);
-    let web3Provider;
-    if (window.ethereum) {
-      web3Provider = window.ethereum;
-      try {
-        // 请求用户授权
-        await window.ethereum.enable();
-      } catch (error) {
-        // 用户不授权时
-        console.error("User denied account access")
-      }
-    } else if (window.web3) { // 老版 MetaMask Legacy dapp browsers...
-        web3Provider = window.web3.currentProvider;
-    } else {
-        web3Provider = new Web3.providers.HttpProvider('https://virtual.mainnet.rpc.tenderly.co/45413366-6994-4e16-aee3-52d53ad0f62f');
+    let currentProvider: BrowserProvider | JsonRpcProvider;
+    if(window.ethereum){
+      currentProvider = new BrowserProvider(window.ethereum);
+    } else {;
+      currentProvider = new JsonRpcProvider(TEST_NET_CONFIG.rpcUrl);
     }
-    setWeb3(new Web3(web3Provider));
+    setProvider(currentProvider);
+
+    console.log("\n2. 查询provider连接到了哪条链")
+    const network = await currentProvider.getNetwork();
+    console.log(network.toJSON());
+
+    try {
+      const accounts = await currentProvider.send("eth_requestAccounts", []);
+      const userAddress = accounts[0]; // 获取第一个账户地址
+      console.log("Connected wallet address:", userAddress);
+      setAddress(userAddress);
+    } catch (error) {
+      console.error("User denied account access:", error);
+    }
+
+    addNetwork();
+    switchNetwork();
+
     setConnecting(false);
     setIc(true);
   }
 
-  function switchNetwork(){
-    if(web3 === null){
-      return;
+  async function addNetwork(){
+    if (window.ethereum) {
+      const networkParams = {
+          chainId: TEST_NET_CONFIG.chainId,
+          chainName: TEST_NET_CONFIG.chainName,
+          rpcUrls: [TEST_NET_CONFIG.rpcUrl],
+          blockExplorerUrls: [TEST_NET_CONFIG.blockExplorerUrl],
+      };
+      try {
+          await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [networkParams],
+          });
+          console.log("Network added successfully");
+      } catch (error) {
+          console.error("add network failed:", error);
+      }
     }
-    web3.
+  }
+
+  function switchNetwork(){
+    if (window.ethereum) {
+      window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: TEST_NET_CONFIG.chainId }],
+      })
+      .then(() => console.log("switched to network successfully"))
+      .catch((error: unknown) => console.error("switch failed:", error));
+    }
   }
 
   function getFaucet(){
@@ -48,11 +88,17 @@ function App() {
     }
 
     setLoading(true);
+    let contract = new Contract("0x043af4416e074c08bcde2ae0ba604c767cb19c0f", [
+      "function getFaucet() public"
+    ], provider);
+
+
   }
 
   return (
     <>
       <h1>Foundry-Facuet</h1>
+      <DiscoverWalletProviders/>
       <div className="card">
         {!isConnected ? (
         <Button variant="contained" onClick={() => connectWallet() } loading={connecting}>
@@ -62,7 +108,6 @@ function App() {
           <>
             <TextField id="standard-basic" label="Address" variant="standard" value={address}/>
             <Button variant="contained" onClick={getFaucet} loading={loading}>Get Faucet</Button>
-
           </>
         )}
       </div>
