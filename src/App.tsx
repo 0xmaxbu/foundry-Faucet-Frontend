@@ -4,12 +4,12 @@ import {
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import {testNet} from './chain';
+import { testNet } from './chain';
 import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { ConnectBtn } from './components/ConnectBtn';
 
 const config = getDefaultConfig({
   appName: 'Foundry-Faucet',
@@ -19,15 +19,14 @@ const config = getDefaultConfig({
 });
 
 const queryClient = new QueryClient();
+
+
 const App = () => {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
-          {/* Your App */}
-          
-            <ConnectButton />
-          
+          <ConnectBtn />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
