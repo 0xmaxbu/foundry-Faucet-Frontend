@@ -4,7 +4,8 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import { useState } from 'react';
 
-import { useWriteContract, useAccount } from 'wagmi';
+import { useWriteContract, useConnectors, useAccount } from 'wagmi';
+// import { writeContract as write } from '@wagmi/core'
 import { ethers } from 'ethers';
 import { abi } from './abi';
 import { config } from '../config';
@@ -15,18 +16,28 @@ interface ContactInteractionProps {
 
 export const ContactInteraction = (props: ContactInteractionProps) => {
 
-    const { chain } = useAccount();
+    const { chain, connector } = useAccount();
     const [amount, setAmount] = useState('');
-    const { isPending, writeContract } = useWriteContract();
+    console.log(connector);
+    const { isPending, writeContract } = useWriteContract({config });
 
     async function handleClick() {
-        const weiAmount = ethers.parseUnits(amount.toString(), 18);
-        const result = await writeContract(config, {
+        const weiAmount = ethers.parseUnits('0.1', 18);
+        const result = await writeContract({
             address: import.meta.env.VITE_FAUCET_CONTRACT_ADDRESS,
             abi,
             functionName: 'withdraw',
             args: [weiAmount],
-        });
+        }, {
+            onSuccess:() => {
+                console.log('pending');
+            }, 
+            onSettled: () => {
+                console.log('setteld');
+            }, 
+            onError:(err) => {
+                console.log('error:', err);
+        } });
 
         console.log(result);
     }
